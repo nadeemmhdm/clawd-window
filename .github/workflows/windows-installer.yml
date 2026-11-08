@@ -58,8 +58,9 @@ jobs:
           $target = Join-Path $env:RUNNER_TEMP 'clawd-msi-validation'
           $log = Join-Path $env:RUNNER_TEMP 'clawd-msi-validation.log'
           New-Item -ItemType Directory -Force -Path $target | Out-Null
-          & "$env:SystemRoot\System32\msiexec.exe" /a "$($msi.FullName)" /qn "TARGETDIR=$target" /l*v "$log"
-          $exitCode = $LASTEXITCODE
+          $arguments = @('/a', "`"$($msi.FullName)`"", '/qn', "TARGETDIR=`"$target`"", '/l*v', "`"$log`"")
+          $process = Start-Process -FilePath "$env:SystemRoot\System32\msiexec.exe" -ArgumentList $arguments -Wait -PassThru
+          $exitCode = $process.ExitCode
           if ($exitCode -notin @(0, 3010)) {
             if (Test-Path $log) { Get-Content $log -Tail 80 }
             throw "Windows Installer could not validate the MSI (exit code $exitCode)."
