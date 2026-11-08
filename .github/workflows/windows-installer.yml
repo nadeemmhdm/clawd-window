@@ -20,8 +20,23 @@ jobs:
       - name: Install stable Rust
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Cache Rust build artifacts
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+
       - name: Install Tauri v2 CLI
         run: cargo install tauri-cli --version "^2.0" --locked
+
+      - name: Install WiX Toolset for MSI packaging
+        run: |
+          choco install wixtoolset --version=3.14.1.20250415 --yes --no-progress
+          $wixBin = Join-Path ${env:ProgramFiles(x86)} 'WiX Toolset v3.14\bin'
+          if (!(Test-Path (Join-Path $wixBin 'candle.exe')) -or !(Test-Path (Join-Path $wixBin 'light.exe'))) {
+            throw "WiX 3.14 was not found at $wixBin"
+          }
+          $env:PATH = "$wixBin;$env:PATH"
+          Add-Content -Path $env:GITHUB_PATH -Value $wixBin
 
       - name: Build MSI and NSIS installers
         working-directory: src-tauri
