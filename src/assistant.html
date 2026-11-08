@@ -19,13 +19,16 @@
     </header>
 
     <section class="view active" id="chat-view" aria-label="Chat">
-      <div class="messages" id="messages" aria-live="polite" aria-relevant="additions text"></div>
-      <div class="file-results" id="file-results"></div>
+      <div class="messages" id="messages" role="log" aria-live="polite" aria-relevant="additions text">
+        <div class="message assistant welcome"><span class="message-speaker">Clawd</span><p>Hi, I’m Clawd. What can I help you with?</p></div>
+      </div>
+      <div class="file-results" id="file-results" hidden></div>
       <form class="composer" id="chat-form">
         <label class="visually-hidden" for="prompt">Message Clawd</label>
-        <textarea id="prompt" rows="1" maxlength="2000" placeholder="Ask Clawd…" autocomplete="off"></textarea>
+        <textarea id="prompt" rows="1" maxlength="2000" placeholder="Type a message…" autocomplete="off"></textarea>
         <button id="send" class="send-button" type="submit" aria-label="Send message">Send</button>
       </form>
+      <button id="ask-again" class="ask-again secondary-button" type="button" hidden>Ask another question</button>
       <div class="small-status" id="chat-status" aria-live="polite"></div>
     </section>
 
@@ -47,7 +50,7 @@
         <div class="inline-row"><input id="model-name" maxlength="100" value="gemma4:31b" autocomplete="off" /><button id="save-model" class="secondary-button" type="button">Save</button></div>
         <label for="api-key">Ollama Cloud API key</label>
         <div class="inline-row"><input id="api-key" type="password" maxlength="512" placeholder="Paste key to connect" autocomplete="new-password" /><button id="save-key" class="secondary-button" type="button">Save key</button></div>
-        <div class="inline-row key-actions"><span id="key-status" class="muted">Not connected</span><button id="clear-key" class="text-button danger" type="button">Clear saved key</button></div>
+        <div class="inline-row key-actions"><span id="key-status" class="muted" aria-live="polite">Not connected</span><button id="clear-key" class="text-button danger" type="button">Clear saved key</button></div>
       </form>
       <div class="privacy-box startup-box">
         <h2>Start with Windows</h2>

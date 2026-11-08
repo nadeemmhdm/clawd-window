@@ -49,6 +49,25 @@ jobs:
         working-directory: src-tauri
         run: cargo tauri build --bundles msi
 
+      - name: Validate MSI with Windows Installer
+        id: validate_msi
+        shell: pwsh
+        run: |
+          $msi = Get-ChildItem 'src-tauri/target/release/bundle/msi/*.msi' -File | Select-Object -First 1
+          if (!$msi) { throw 'The MSI build produced no installer file.' }
+          $target = Join-Path $env:RUNNER_TEMP 'clawd-msi-validation'
+          $log = Join-Path $env:RUNNER_TEMP 'clawd-msi-validation.log'
+          New-Item -ItemType Directory -Force -Path $target | Out-Null
+          & "$env:SystemRoot\System32\msiexec.exe" /a "$($msi.FullName)" /qn "TARGETDIR=$target" /l*v "$log"
+          $exitCode = $LASTEXITCODE
+          if ($exitCode -notin @(0, 3010)) {
+            if (Test-Path $log) { Get-Content $log -Tail 80 }
+            throw "Windows Installer could not validate the MSI (exit code $exitCode)."
+          }
+          $payload = Get-ChildItem -Path $target -Recurse -File -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (!$payload) { throw 'Windows Installer accepted the MSI but extracted no payload.' }
+          Write-Host "Windows Installer validated and expanded $($msi.Name)."
+
       - name: Try NSIS setup installer
         id: build_nsis
         continue-on-error: true
@@ -56,7 +75,7 @@ jobs:
         run: cargo tauri build --bundles nsis
 
       - name: Upload Windows installers
-        if: always() && steps.build_msi.outcome == 'success'
+        if: always() && steps.build_msi.outcome == 'success' && steps.validate_msi.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
           name: Clawd-Windows-Installers

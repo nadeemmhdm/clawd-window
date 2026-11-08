@@ -8,6 +8,8 @@ const views = ["chat-view", "tasks-view", "settings-view"];
 const messagesEl = document.getElementById("messages");
 const promptEl = document.getElementById("prompt");
 const sendEl = document.getElementById("send");
+const composerEl = document.getElementById("chat-form");
+const askAgainEl = document.getElementById("ask-again");
 let toastTimer = null;
 
 function showView(id) {
@@ -19,13 +21,19 @@ function showView(id) {
   }
   if (id === "tasks-view") refreshTodos();
   if (id === "settings-view") refreshSettings();
-  if (id === "chat-view") setTimeout(() => promptEl.focus(), 20);
+  if (id === "chat-view") setTimeout(() => (composerEl.hidden ? askAgainEl : promptEl).focus(), 20);
 }
 
 function addMessage(role, text, isError = false) {
   const node = document.createElement("div");
   node.className = `message ${role}${isError ? " error" : ""}`;
-  node.textContent = text;
+  const speaker = document.createElement("span");
+  speaker.className = "message-speaker";
+  speaker.textContent = role === "user" ? "You" : "Clawd";
+  const body = document.createElement("p");
+  body.className = "message-text";
+  body.textContent = text;
+  node.append(speaker, body);
   messagesEl.appendChild(node);
   messagesEl.scrollTop = messagesEl.scrollHeight;
   return node;
@@ -53,7 +61,13 @@ function prettyTime(ms) {
 function renderFileResults(files) {
   const container = document.getElementById("file-results");
   container.replaceChildren();
-  for (const file of files || []) {
+  const matches = Array.isArray(files) ? files : [];
+  if (!matches.length) {
+    container.hidden = true;
+    return;
+  }
+  container.hidden = false;
+  for (const file of matches.slice(0, 3)) {
     const row = document.createElement("div");
     row.className = "file-result";
     const info = document.createElement("div");
@@ -83,6 +97,12 @@ function renderFileResults(files) {
     row.append(info, open);
     container.appendChild(row);
   }
+  if (matches.length > 3) {
+    const more = document.createElement("div");
+    more.className = "file-more";
+    more.textContent = `Showing 3 of ${matches.length} matches.`;
+    container.appendChild(more);
+  }
 }
 
 function errorText(error) {
@@ -98,16 +118,24 @@ async function sendMessage(text) {
   if (!prompt || sendEl.disabled) return;
   const previousHistory = conversation.slice(-12).map((item) => ({ role: item.role, content: item.content }));
   conversation.push({ role: "user", content: prompt });
+  messagesEl.replaceChildren();
   addMessage("user", prompt);
-  document.getElementById("file-results").replaceChildren();
+  const pendingMessage = addMessage("assistant", "Thinking…");
+  pendingMessage.classList.add("pending");
+  const fileResults = document.getElementById("file-results");
+  fileResults.replaceChildren();
+  fileResults.hidden = true;
   promptEl.value = "";
   promptEl.style.height = "auto";
+  composerEl.hidden = true;
+  askAgainEl.hidden = true;
   sendEl.disabled = true;
   sendEl.textContent = "…";
   announce("Clawd is thinking…");
   try {
     await setPetAiWorking(true);
     const reply = await invoke("assistant_chat", { prompt, history: previousHistory });
+    pendingMessage.remove();
     addMessage("assistant", reply.text || "Done.");
     conversation.push({ role: "assistant", content: reply.text || "Done." });
     renderFileResults(reply.files);
@@ -115,19 +143,26 @@ async function sendMessage(text) {
     announce("");
   } catch (error) {
     const message = errorText(error);
+    pendingMessage.remove();
     addMessage("assistant", message, true);
     announce("");
   } finally {
     await setPetAiWorking(false);
     sendEl.disabled = false;
     sendEl.textContent = "Send";
-    promptEl.focus();
+    composerEl.hidden = true;
+    askAgainEl.hidden = false;
   }
 }
 
 document.getElementById("chat-form").addEventListener("submit", (event) => {
   event.preventDefault();
   sendMessage(promptEl.value);
+});
+askAgainEl.addEventListener("click", () => {
+  askAgainEl.hidden = true;
+  composerEl.hidden = false;
+  promptEl.focus();
 });
 promptEl.addEventListener("keydown", (event) => {
   if (event.key === "Enter" && !event.shiftKey) {
@@ -137,7 +172,7 @@ promptEl.addEventListener("keydown", (event) => {
 });
 promptEl.addEventListener("input", () => {
   promptEl.style.height = "auto";
-  promptEl.style.height = `${Math.min(promptEl.scrollHeight, 108)}px`;
+  promptEl.style.height = `${Math.min(promptEl.scrollHeight, 84)}px`;
 });
 
 document.getElementById("tasks-tab").addEventListener("click", () => showView("tasks-view"));
@@ -224,7 +259,18 @@ async function refreshSettings() {
   try {
     const settings = await invoke("assistant_settings");
     document.getElementById("model-name").value = settings.model || "gemma4:31b";
-    document.getElementById("key-status").textContent = settings.api_key_configured ? "Connected" : "Not connected";
+    const keyStatus = document.getElementById("key-status");
+    const keyState = settings.api_key_status || (settings.api_key_configured ? "saved" : settings.api_key_issue ? "unavailable" : "missing");
+    const keyLabels = {
+      saved: "Key saved",
+      missing: "Not connected",
+      invalid: "Saved key invalid",
+      unavailable: "Credential store unavailable",
+    };
+    keyStatus.classList.toggle("key-status-good", keyState === "saved");
+    keyStatus.classList.toggle("key-status-warning", keyState === "invalid" || keyState === "unavailable");
+    keyStatus.textContent = keyLabels[keyState] || "Key status unknown";
+    if (settings.api_key_issue) status.textContent = settings.api_key_issue;
     const startupToggle = document.getElementById("startup-toggle");
     startupToggle.checked = await invoke("autostart_enabled");
     const folderRoot = document.getElementById("folder-options");
@@ -278,16 +324,20 @@ document.getElementById("save-key").addEventListener("click", async () => {
   try {
     await invoke("save_ollama_api_key", { apiKey: input.value });
     input.value = "";
-    document.getElementById("key-status").textContent = "Connected";
-    status.textContent = "Key saved in the operating system credential store.";
-  } catch (error) { status.textContent = errorText(error); }
+    await refreshSettings();
+    status.textContent = "API key saved and verified in the operating system credential store.";
+  } catch (error) {
+    const message = errorText(error);
+    await refreshSettings();
+    status.textContent = message;
+  }
 });
 
 document.getElementById("clear-key").addEventListener("click", async () => {
   const status = document.getElementById("settings-status");
   try {
     await invoke("clear_ollama_api_key");
-    document.getElementById("key-status").textContent = "Not connected";
+    await refreshSettings();
     status.textContent = "Saved API key cleared.";
   } catch (error) { status.textContent = errorText(error); }
 });

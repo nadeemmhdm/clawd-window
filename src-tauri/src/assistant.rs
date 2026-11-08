@@ -111,6 +111,8 @@ pub struct FolderOption {
 pub struct AssistantSettings {
     pub model: String,
     pub api_key_configured: bool,
+    pub api_key_status: String,
+    pub api_key_issue: Option<String>,
     pub folders: Vec<FolderOption>,
 }
 
@@ -134,54 +136,121 @@ pub struct ChatMessage {
     pub content: String,
 }
 
+#[derive(Debug)]
+enum ApiKeyReadError {
+    Missing,
+    Invalid(String),
+    StoreUnavailable(String),
+}
+
+impl ApiKeyReadError {
+    fn user_message(&self) -> String {
+        match self {
+            Self::Missing => {
+                "Add your Ollama Cloud API key in Clawd Settings to start chatting.".to_string()
+            }
+            Self::Invalid(message) => message.clone(),
+            Self::StoreUnavailable(message) => message.clone(),
+        }
+    }
+}
+
+fn api_key_status(result: Result<String, ApiKeyReadError>) -> (bool, &'static str, Option<String>) {
+    match result {
+        Ok(_) => (true, "saved", None),
+        Err(ApiKeyReadError::Missing) => (false, "missing", None),
+        Err(ApiKeyReadError::Invalid(message)) => (false, "invalid", Some(message)),
+        Err(ApiKeyReadError::StoreUnavailable(message)) => (false, "unavailable", Some(message)),
+    }
+}
+
 fn keyring_entry() -> Result<Entry, String> {
     Entry::new(KEYRING_SERVICE, KEYRING_USER)
         .map_err(|e| format!("system credential store unavailable: {e}"))
 }
 
-fn read_api_key() -> Result<String, String> {
-    keyring_entry()?
-        .get_password()
-        .map_err(|_| {
-            "Add your Ollama Cloud API key in Clawd Settings to start chatting.".to_string()
-        })
-        .and_then(|key| {
-            if key.trim().is_empty() {
-                Err("Add your Ollama Cloud API key in Clawd Settings to start chatting.".into())
-            } else {
-                Ok(key)
-            }
-        })
+fn normalize_api_key(raw: &str) -> Result<String, String> {
+    let raw = raw.trim();
+    let key = match raw.split_once(' ') {
+        Some((scheme, value)) if scheme.eq_ignore_ascii_case("bearer") => value.trim(),
+        _ => raw,
+    };
+    if key.len() < 8 || key.len() > 512 || key.chars().any(char::is_control) {
+        return Err(
+            "The API key must be between 8 and 512 characters, without control characters.".into(),
+        );
+    }
+    Ok(key.to_string())
+}
+
+fn read_api_key() -> Result<String, ApiKeyReadError> {
+    let entry = keyring_entry().map_err(ApiKeyReadError::StoreUnavailable)?;
+    let raw = match entry.get_password() {
+        Ok(key) => key,
+        Err(keyring::Error::NoEntry) => return Err(ApiKeyReadError::Missing),
+        Err(error) => {
+            return Err(ApiKeyReadError::StoreUnavailable(format!(
+                "Could not read the saved key from the system credential store: {error}"
+            )))
+        }
+    };
+    if raw.trim().is_empty() {
+        return Err(ApiKeyReadError::Missing);
+    }
+    normalize_api_key(&raw).map_err(|_| {
+        ApiKeyReadError::Invalid(
+            "The saved API key is invalid. Re-enter it in Clawd Settings.".into(),
+        )
+    })
 }
 
 #[tauri::command]
 pub fn assistant_settings(state: State<'_, AssistantState>) -> AssistantSettings {
     let data = state.data.lock();
-    let configured = read_api_key().is_ok();
+    let (configured, key_status, issue) = api_key_status(read_api_key());
     let folders = folder_options(&data.enabled_folders);
     AssistantSettings {
         model: data.model.clone(),
         api_key_configured: configured,
+        api_key_status: key_status.to_string(),
+        api_key_issue: issue,
         folders,
     }
 }
 
 #[tauri::command]
 pub fn save_ollama_api_key(api_key: String) -> Result<(), String> {
-    let key = api_key.trim();
-    if key.len() < 8 || key.len() > 512 || key.chars().any(char::is_control) {
-        return Err("The API key must be between 8 and 512 characters.".into());
+    let key = normalize_api_key(&api_key)?;
+    let entry = keyring_entry()?;
+    entry
+        .set_password(&key)
+        .map_err(|e| format!("could not save key in the system credential store: {e}"))?;
+    let saved = entry.get_password().map_err(|e| {
+        format!("the key was written but could not be verified in the system credential store: {e}")
+    })?;
+    let saved = normalize_api_key(&saved).map_err(|_| {
+        "The saved API key could not be verified. Please try saving it again.".to_string()
+    })?;
+    if saved != key {
+        return Err("The saved API key did not match the value entered. Please try again.".into());
     }
-    keyring_entry()?
-        .set_password(key)
-        .map_err(|e| format!("could not save key in the system credential store: {e}"))
+    Ok(())
 }
 
 #[tauri::command]
 pub fn clear_ollama_api_key() -> Result<(), String> {
-    keyring_entry()?
-        .set_password("")
-        .map_err(|e| format!("could not clear the saved key: {e}"))
+    let entry = keyring_entry()?;
+    match entry.delete_credential() {
+        Ok(()) | Err(keyring::Error::NoEntry) => {}
+        Err(error) => return Err(format!("could not clear the saved key: {error}")),
+    }
+    match entry.get_password() {
+        Err(keyring::Error::NoEntry) => Ok(()),
+        Ok(_) => Err("the credential store still contains an entry after clearing the key".into()),
+        Err(error) => Err(format!(
+            "could not verify that the saved key was cleared: {error}"
+        )),
+    }
 }
 
 #[tauri::command]
@@ -560,6 +629,63 @@ fn make_tools() -> Value {
     ])
 }
 
+fn provider_error_hint(body: &[u8], api_key: &str) -> Option<String> {
+    let value: Value = serde_json::from_slice(body).ok()?;
+    let raw = value
+        .pointer("/error/message")
+        .and_then(Value::as_str)
+        .or_else(|| value.get("error").and_then(Value::as_str))
+        .or_else(|| value.get("message").and_then(Value::as_str))?;
+    let sanitized = raw
+        .chars()
+        .filter(|character| !character.is_control())
+        .collect::<String>()
+        .replace(api_key, "[redacted]");
+    let short = sanitized.chars().take(240).collect::<String>();
+    let short = short.trim();
+    (!short.is_empty()).then(|| short.to_string())
+}
+
+#[cfg(test)]
+mod api_key_and_error_tests {
+    use super::*;
+
+    #[test]
+    fn normalize_api_key_accepts_raw_and_bearer_values() {
+        assert_eq!(normalize_api_key("  abcdefgh  ").unwrap(), "abcdefgh");
+        assert_eq!(normalize_api_key("Bearer abcdefgh").unwrap(), "abcdefgh");
+        assert_eq!(normalize_api_key("bEaReR abcdefgh").unwrap(), "abcdefgh");
+    }
+
+    #[test]
+    fn normalize_api_key_rejects_control_characters() {
+        assert!(normalize_api_key("abcdefgh\nijklmnop").is_err());
+    }
+
+    #[test]
+    fn invalid_key_and_unavailable_store_have_distinct_statuses() {
+        let invalid = api_key_status(Err(ApiKeyReadError::Invalid("invalid format".into())));
+        let unavailable = api_key_status(Err(ApiKeyReadError::StoreUnavailable(
+            "store unavailable".into(),
+        )));
+        assert_eq!(invalid, (false, "invalid", Some("invalid format".into())));
+        assert_eq!(
+            unavailable,
+            (false, "unavailable", Some("store unavailable".into()))
+        );
+    }
+
+    #[test]
+    fn provider_error_hint_redacts_the_api_key() {
+        let key = "secret-key-123456";
+        let body = format!(r#"{{"error":{{"message":"Invalid key {key}"}}}}"#);
+        assert_eq!(
+            provider_error_hint(body.as_bytes(), key).as_deref(),
+            Some("Invalid key [redacted]")
+        );
+    }
+}
+
 fn local_clock_context() -> String {
     format!("Current local system time is {}. Use this local timezone when interpreting reminder times; ask a brief clarifying question if the date or time is ambiguous.", Local::now().to_rfc3339())
 }
@@ -574,7 +700,7 @@ pub async fn assistant_chat(
     if prompt.is_empty() || prompt.chars().count() > MAX_PROMPT_CHARS {
         return Err(format!("Message must be 1–{MAX_PROMPT_CHARS} characters."));
     }
-    let api_key = read_api_key()?;
+    let api_key = read_api_key().map_err(|error| error.user_message())?;
     let model = state.data.lock().model.clone();
     let mut messages = vec![json!({"role":"system","content":format!(
         "You are Clawd, a friendly and concise desktop pet assistant. Be warm, reassuring, and honest; reply in the user's language. {} You may use only these tools: add a task, create a reminder, or search filenames in folders the user has explicitly enabled. When the user asks for one of these actions, use the matching tool. Never claim an action succeeded before a tool succeeds. Never read, upload, modify, delete, or execute local files; filename search returns names and locations only. Never run commands or control other apps. For reminders, use RFC3339 with the current local offset. If a request is ambiguous, ask instead of guessing.", local_clock_context()
@@ -610,26 +736,38 @@ pub async fn assistant_chat(
         .map_err(|e| format!("could not prepare Ollama request: {e}"))?;
     let response = client
         .post("https://ollama.com/v1/chat/completions")
-        .bearer_auth(api_key)
+        .bearer_auth(&api_key)
         .json(&request)
         .send()
         .await
-        .map_err(|_| {
-            "Could not reach Ollama Cloud. Check your internet connection and try again."
-                .to_string()
+        .map_err(|error| {
+            if error.is_timeout() {
+                "Ollama Cloud did not respond in time. Please try again.".to_string()
+            } else if error.is_connect() {
+                "Could not connect to Ollama Cloud. Check your internet connection and try again."
+                    .to_string()
+            } else {
+                "The Ollama Cloud request failed. Check your connection and try again.".to_string()
+            }
         })?;
     if !response.status().is_success() {
         let status = response.status();
-        let _ = response.bytes().await;
+        let error_body = response.bytes().await.unwrap_or_default();
+        let detail = provider_error_hint(&error_body, &api_key);
         return Err(match status.as_u16() {
-            401 | 403 => "Ollama rejected the API key. Check it in Settings.".into(),
+            401 | 403 => {
+                "Ollama rejected the saved API key. Check or replace it in Settings.".into()
+            }
             429 => {
                 "Ollama Cloud is rate limiting requests. Please wait a moment and try again.".into()
             }
-            _ => format!(
-                "Ollama Cloud returned HTTP {}. Check the model name and try again.",
-                status.as_u16()
-            ),
+            _ => match detail {
+                Some(detail) => format!("Ollama Cloud returned HTTP {}: {detail}", status.as_u16()),
+                None => format!(
+                    "Ollama Cloud returned HTTP {}. Check the selected model and try again.",
+                    status.as_u16()
+                ),
+            },
         });
     }
     let bytes = response

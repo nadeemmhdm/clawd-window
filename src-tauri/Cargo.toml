@@ -1,8 +1,8 @@
 [package]
 name = "app"
-version = "0.2.0"
+version = "0.2.1"
 description = "Clawd - Desktop Pet"
-authors = ["you"]
+authors = ["NM Developers"]
 license = ""
 repository = ""
 edition = "2021"
@@ -33,7 +33,7 @@ axum = "0.7"
 tower = "0.4"
 dirs = "5"
 chrono = { version = "0.4", features = ["serde"] }
-keyring = "3.6"
+keyring = { version = "3.6", features = ["windows-native"] }
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 
 [target.'cfg(unix)'.dependencies]
