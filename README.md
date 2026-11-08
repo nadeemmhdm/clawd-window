@@ -54,6 +54,11 @@ Inspired by Shimeji — a small crab named Clawd lives on your desktop, walks ac
 - **Window climbing** *(Shimeji-style)* — Clawd walks up the sides of any open application window, walks along the top edge, then turns the corner and climbs back down.
 - **Screen edge climbing** — climbs the left/right monitor edges and walks back across the top.
 - **File eater** — drag any file/folder onto Clawd and it gets moved to the Recycle Bin (safe, recoverable).
+- **Hover chat** — move the cursor over Clawd to open a small assistant chat window; the pet's movement window stays separate.
+- **Ollama Cloud chat** — connect an API key from Settings; requests are sent from the Rust backend to Ollama's OpenAI-compatible API, never directly from browser code.
+- **Tasks and reminders** — ask Clawd to add a TODO or set a reminder in local system time; tasks are saved locally and reminders fire while Clawd is running.
+- **Filename search** — optionally allow-list Downloads, Documents, Pictures, Videos, and Music; Clawd searches names only and can reveal a match in the file manager without opening or reading it.
+- **Privacy controls** — chat history is session-only, tasks remain local, the API key uses the operating system credential store, and file search is off until folders are enabled.
 - **Auto-cycle idle states** — Clawd randomly switches between walking, working, sleeping, etc. when idle.
 - **Multi-monitor + HiDPI aware** — pet positions correctly across monitors with different DPI scaling (100%, 150%, 200%).
 - **Tray menu** — Show / Hide / Force Sleep / Wake Up / Reset Position / Exit.
@@ -88,11 +93,26 @@ After install, **Clawd** appears as a floating crab near the bottom-right of you
 |---|---|
 | **Click** Clawd | Plays happy animation |
 | **Drag** Clawd | Move him anywhere on screen |
+| Hover Clawd | Opens the chat panel with a message box and Send button |
+| Ask for a TODO/reminder | Adds a local task; reminders use your computer's local time while Clawd is running |
+| Ask to find a filename | Searches only the folders enabled in Settings; choose **Open location** to select it in the file manager |
 | **Drop file** on Clawd | File moves to Recycle Bin (Clawd eats it!) |
 | **Right-click** tray icon | Open menu (Show/Hide/Sleep/Reset/Exit) |
 | Move cursor near Clawd | Eyes track your cursor |
 | Leave Clawd alone | Auto-cycles through animations; sleeps after ~5 min idle |
 | Walk into a window edge | Clawd climbs it, walks across the top, climbs down the other side |
+
+---
+
+## Assistant setup and privacy
+
+Hover over Clawd and open **Settings**. Create an API key in [Ollama Cloud](https://docs.ollama.com/cloud), paste it into the key field, and choose a model supported by Ollama's [chat completions API](https://docs.ollama.com/api/openai-compatibility). The key is stored in the operating system credential store and is never saved in the WebView or repository.
+
+The assistant sends your chat message to Ollama Cloud. Chat history is kept in memory only. Tasks and reminders are stored in the app's local data folder. Reminders are checked against the computer's system clock and appear in Clawd while the app is running.
+
+Filename search is disabled until you select one or more known folders in Settings. Search runs locally, follows no symlinks, and returns filenames and locations only—not file contents. A file is never opened automatically: choose **Open location** to reveal it in the file manager. The assistant cannot run shell commands or modify files.
+
+The local control API remains bound to `127.0.0.1`, requires a generated bearer token, and limits request size and file-eater batches. API-driven file deletion is disabled by default; dragging a file onto the pet remains a manual action. The file eater rejects the home folder itself, and only the pet window can invoke it. The Tauri WebView uses a restrictive Content Security Policy.
 
 ---
 
@@ -161,16 +181,19 @@ clawd-window/
 │   ├── index.html                    # <object> tag swaps SVG per state
 │   ├── pet.js                        # State listener, drag/click, eye-tracking
 │   ├── style.css                     # Transparent body, pixelated rendering
+│   ├── assistant.html/js/css          # Separate chat, tasks, and privacy settings window
 │   └── assets/                       # 23 hand-crafted SVG animations
 │
 ├── src-tauri/                        # Backend (Rust)
 │   ├── src/
 │   │   ├── lib.rs                    # App entry, plugin setup, command registration
+│   │   ├── assistant.rs              # Ollama Cloud, local tasks/reminders, allowlisted filename search
 │   │   ├── main.rs                   # Binary entry
 │   │   ├── state.rs                  # PetState enum + Arc<RwLock>
 │   │   ├── pet_controller.rs         # Walking, climbing, gravity tick (60 Hz)
 │   │   ├── window_tracker.rs         # Win32 EnumWindows polling
-│   │   ├── file_eater.rs             # trash crate -> Recycle Bin
+│   │   ├── file_eater.rs             # trash crate -> Recycle Bin; rejects the home folder itself
+│   │   ├── http_api.rs               # Loopback API protected by a generated bearer token
 │   │   └── tray.rs                   # Tray icon + menu
 │   ├── icons/                        # App icons (PNG + ICO + ICNS)
 │   ├── Cargo.toml                    # Rust dependencies

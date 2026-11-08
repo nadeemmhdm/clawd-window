@@ -8,6 +8,7 @@ The path comes from `$ARGUMENTS`. Pass it as a single-element array. The tool re
 
 - If `N >= 1`: confirm to the user, e.g. `Clawd đã ăn $ARGUMENTS — đã vào Recycle Bin.`
 - If `N == 0`: the path was rejected (likely outside `%USERPROFILE%` or doesn't exist). Tell the user.
+- If the server says API file eating is disabled, do not retry; tell the user they can drag the file onto Clawd or deliberately enable `CLAWD_ENABLE_EAT_API=true` in the app's environment and restart it.
 - If "clawd app not running": tell the user to start the Clawd desktop app.
 
 Do NOT run any Bash/curl commands — use the MCP tool only.

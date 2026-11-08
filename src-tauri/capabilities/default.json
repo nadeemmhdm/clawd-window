@@ -3,7 +3,8 @@
   "identifier": "default",
   "description": "Clawd permissions",
   "windows": [
-    "main"
+    "main",
+    "assistant"
   ],
   "permissions": [
     "core:default",

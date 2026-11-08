@@ -6,7 +6,7 @@ Plug the [Clawd desktop pet](https://github.com/Hert4/clawd-window) into Claude 
 
 - **Slash commands** — `/clawd:happy`, `/clawd:sleep`, `/clawd:celebrate`, `/clawd:status`, `/clawd:eat <path>`
 - **Hooks (auto-react)** — every time Claude uses a tool, Clawd switches to a working animation; on a system notification (permission prompt), Clawd plays the notification animation; when Claude finishes a task, Clawd celebrates (happy → idle).
-- **MCP tools** — Claude can call `clawd_set_state`, `clawd_status`, `clawd_celebrate`, `clawd_eat`, `clawd_health`, `clawd_list_states` autonomously.
+- **MCP tools** — Claude can call `clawd_set_state`, `clawd_status`, `clawd_celebrate`, `clawd_health`, and `clawd_list_states`; `clawd_eat` requires the app's explicit API-deletion opt-in.
 
 ## Prerequisites
 
@@ -49,7 +49,7 @@ Once Clawd app is running and the plugin is loaded:
 | `/clawd:sleep` | Force Clawd to sleep |
 | `/clawd:celebrate` | Happy 1.5s → idle |
 | `/clawd:status` | Print current state |
-| `/clawd:eat <path>` | Move file/folder to Recycle Bin (must be under `%USERPROFILE%`) |
+| `/clawd:eat <path>` | Move file/folder to Recycle Bin only when the app was deliberately launched with `CLAWD_ENABLE_EAT_API=true`; otherwise API deletion is disabled (manual drag-to-pet still works) |
 
 Hooks fire automatically — you don't need to do anything. Just code with Claude and Clawd will react.
 
@@ -60,6 +60,8 @@ You can also ask Claude in chat: *"check if clawd is running"* → it will invok
 | Env var | Default | Purpose |
 |---|---|---|
 | `CLAWD_PORT` | `9876` | Port the desktop app listens on. Set the same value on both the app and the plugin if you change it. |
+| `CLAWD_API_TOKEN` | *(read from app data)* | Optional token override for managed plugin environments. Do not commit or share it. |
+| `CLAWD_ENABLE_EAT_API` | `false` | Set to `true` in the app's environment only if you explicitly want authenticated plugin/API calls to move files to the Recycle Bin. |
 
 Set it in PowerShell before launching Claude Code:
 
@@ -104,7 +106,7 @@ Claude Code session
                    Clawd Tauri app  →  WebView pet animation
 ```
 
-The HTTP API is local-only (`127.0.0.1`). No auth — single-user assumption.
+The HTTP API is bound to `127.0.0.1` and requires a random bearer token on every route. Clawd creates the token in its OS-specific per-user app-data folder; this plugin reads it for each request. On Unix, the app-data directory and token are restricted to the current account. On Windows, the token inherits the normal per-user app-data ACL. Software already running as your account can access it. File eating through the API is disabled unless you explicitly enable it; dragging a file onto the pet remains available.
 
 ## Files
 
@@ -121,7 +123,8 @@ plugin/clawd/
 ├── .mcp.json                     # MCP server config
 ├── bin/
 │   ├── hook.mjs                  # Fire-and-forget hook shim
-│   └── mcp-server.mjs            # Hand-rolled MCP JSON-RPC, no deps
+│   ├── mcp-server.mjs            # Hand-rolled MCP JSON-RPC, no deps
+│   └── token-path.mjs            # OS-specific app-data path for the local API token
 └── README.md
 ```
 

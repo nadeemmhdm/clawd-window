@@ -25,10 +25,28 @@
         "dragDropEnabled": true,
         "fullscreen": false,
         "focus": false
+      },
+      {
+        "label": "assistant",
+        "title": "Clawd Assistant",
+        "url": "assistant.html",
+        "width": 390,
+        "height": 560,
+        "x": 700,
+        "y": 500,
+        "visible": false,
+        "transparent": true,
+        "alwaysOnTop": true,
+        "decorations": false,
+        "resizable": false,
+        "skipTaskbar": true,
+        "shadow": true,
+        "focus": false,
+        "fullscreen": false
       }
     ],
     "security": {
-      "csp": null
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' asset: http://asset.localhost data: blob:; media-src 'self' asset: http://asset.localhost blob:; object-src 'self' asset: http://asset.localhost; connect-src ipc: http://ipc.localhost; base-uri 'self'; frame-ancestors 'none';"
     }
   },
   "bundle": {

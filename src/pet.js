@@ -312,6 +312,7 @@ let inBbox = false;
 function mouseInBbox(b) {
   if (b === inBbox) return;
   inBbox = b;
+  invoke("set_assistant_hover", { source: "main", inside: b }).catch(() => {});
 }
 
 function handleHover(e) {

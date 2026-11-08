@@ -13,11 +13,19 @@
 //   - `tools/call` returns { content: [{type:"text", text}], isError? }.
 
 import readline from "node:readline";
+import { readFileSync } from "node:fs";
+import { apiTokenPath } from "./token-path.mjs";
 
 const PROTOCOL_VERSION = "2025-06-18";
 const SERVER_INFO = { name: "clawd", version: "0.1.0" };
 const CLAWD_PORT = process.env.CLAWD_PORT || 9876;
 const BASE = `http://127.0.0.1:${CLAWD_PORT}`;
+const TOKEN_PATH = apiTokenPath();
+
+function apiToken() {
+  if (process.env.CLAWD_API_TOKEN) return process.env.CLAWD_API_TOKEN;
+  try { return readFileSync(TOKEN_PATH, "utf8").trim(); } catch { return ""; }
+}
 
 const STATE_KEYS = [
   "idle_living", "sleeping", "happy", "dizzy", "dragging", "eating",
@@ -93,7 +101,7 @@ async function http(method, path, body) {
   try {
     const res = await fetch(`${BASE}${path}`, {
       method,
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiToken()}` },
       body: body === undefined ? undefined : JSON.stringify(body),
       signal: ctrl.signal,
     });

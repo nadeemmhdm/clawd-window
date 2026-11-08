@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="dark" />
+  <title>Clawd Assistant</title>
+  <link rel="stylesheet" href="assistant.css" />
+</head>
+<body>
+  <main class="window-card">
+    <header class="topbar">
+      <div class="brand"><span class="brand-dot" aria-hidden="true"></span><span>Clawd</span></div>
+      <nav aria-label="Assistant views">
+        <button class="nav-button" id="tasks-tab" type="button">Tasks</button>
+        <button class="icon-button" id="settings-tab" type="button" aria-label="Settings" title="Settings">Settings</button>
+        <button class="icon-button close-button" id="close-window" type="button" aria-label="Close assistant" title="Close">×</button>
+      </nav>
+    </header>
+
+    <section class="view active" id="chat-view" aria-label="Chat">
+      <div class="messages" id="messages" aria-live="polite" aria-relevant="additions text"></div>
+      <div class="file-results" id="file-results"></div>
+      <form class="composer" id="chat-form">
+        <label class="visually-hidden" for="prompt">Message Clawd</label>
+        <textarea id="prompt" rows="1" maxlength="2000" placeholder="Ask Clawd…" autocomplete="off"></textarea>
+        <button id="send" class="send-button" type="submit" aria-label="Send message">Send</button>
+      </form>
+      <div class="small-status" id="chat-status" aria-live="polite"></div>
+    </section>
+
+    <section class="view" id="tasks-view" aria-label="Tasks and reminders" hidden>
+      <div class="section-heading"><h1>Tasks & reminders</h1><button class="text-button" data-view="chat-view" type="button">Back to chat</button></div>
+      <form id="todo-form" class="todo-form">
+        <label class="visually-hidden" for="todo-title">New task</label>
+        <input id="todo-title" maxlength="200" placeholder="Add a task…" autocomplete="off" />
+        <button class="send-button" type="submit">Add</button>
+      </form>
+      <ul id="todo-list" class="todo-list"></ul>
+      <p class="muted">Reminders use your computer’s local time and are checked while Clawd is running.</p>
+    </section>
+
+    <section class="view" id="settings-view" aria-label="Settings" hidden>
+      <div class="section-heading"><h1>Settings</h1><button class="text-button" data-view="chat-view" type="button">Back to chat</button></div>
+      <form id="settings-form" class="settings-form">
+        <label for="model-name">Ollama Cloud model</label>
+        <div class="inline-row"><input id="model-name" maxlength="100" value="gemma4:31b" autocomplete="off" /><button id="save-model" class="secondary-button" type="button">Save</button></div>
+        <label for="api-key">Ollama Cloud API key</label>
+        <div class="inline-row"><input id="api-key" type="password" maxlength="512" placeholder="Paste key to connect" autocomplete="new-password" /><button id="save-key" class="secondary-button" type="button">Save key</button></div>
+        <div class="inline-row key-actions"><span id="key-status" class="muted">Not connected</span><button id="clear-key" class="text-button danger" type="button">Clear saved key</button></div>
+      </form>
+      <div class="privacy-box">
+        <h2>Local file search</h2>
+        <p>Clawd searches filenames only in folders you enable. It does not read file contents. Search stays on this computer; your message goes to Ollama Cloud so it can understand what you asked.</p>
+        <div id="folder-options" class="folder-options"></div>
+      </div>
+      <p class="muted">Chats stay in memory and are not saved. Tasks and reminders are stored locally. Your API key is kept in the operating system credential store, not in browser storage.</p>
+      <div class="small-status" id="settings-status" aria-live="polite"></div>
+    </section>
+
+    <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+  </main>
+  <script src="assistant.js"></script>
+</body>
+</html>
