@@ -219,6 +219,8 @@ async function refreshSettings() {
     const settings = await invoke("assistant_settings");
     document.getElementById("model-name").value = settings.model || "gemma4:31b";
     document.getElementById("key-status").textContent = settings.api_key_configured ? "Connected" : "Not connected";
+    const startupToggle = document.getElementById("startup-toggle");
+    startupToggle.checked = await invoke("autostart_enabled");
     const folderRoot = document.getElementById("folder-options");
     folderRoot.replaceChildren();
     for (const folder of settings.folders || []) {
@@ -282,6 +284,24 @@ document.getElementById("clear-key").addEventListener("click", async () => {
     document.getElementById("key-status").textContent = "Not connected";
     status.textContent = "Saved API key cleared.";
   } catch (error) { status.textContent = errorText(error); }
+});
+
+document.getElementById("startup-toggle").addEventListener("change", async (event) => {
+  const toggle = event.currentTarget;
+  const requested = toggle.checked;
+  const status = document.getElementById("settings-status");
+  toggle.disabled = true;
+  try {
+    toggle.checked = await invoke("set_autostart", { enabled: requested });
+    status.textContent = toggle.checked
+      ? "Clawd will open automatically when you sign in."
+      : "Clawd will not start automatically.";
+  } catch (error) {
+    toggle.checked = !requested;
+    status.textContent = errorText(error);
+  } finally {
+    toggle.disabled = false;
+  }
 });
 
 async function refreshAll() {

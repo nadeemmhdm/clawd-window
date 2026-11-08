@@ -7,7 +7,7 @@
 **A cute pixel-art desktop pet for Windows.**
 Inspired by Shimeji — a small crab named Clawd lives on your desktop, walks across your screen, climbs your application windows, and eats files you drag onto him (sending them safely to the Recycle Bin).
 
-[![Tauri](https://img.shields.io/badge/Tauri-2.10-FFC131?logo=tauri&logoColor=white)](https://tauri.app)
+[![Tauri](https://img.shields.io/badge/Tauri-2.12-FFC131?logo=tauri&logoColor=white)](https://tauri.app)
 [![Rust](https://img.shields.io/badge/Rust-2021-000000?logo=rust&logoColor=white)](https://www.rust-lang.org)
 [![Windows](https://img.shields.io/badge/Windows-10%2F11-0078D4?logo=windows&logoColor=white)](#)
 [![Release](https://img.shields.io/badge/release-0.1.0-blue)](#install)
@@ -53,7 +53,7 @@ Inspired by Shimeji — a small crab named Clawd lives on your desktop, walks ac
 - **Mouse interaction** — click to make Clawd happy, drag to move him around, eyes follow your cursor when nearby.
 - **Window climbing** *(Shimeji-style)* — Clawd walks up the sides of any open application window, walks along the top edge, then turns the corner and climbs back down.
 - **Screen edge climbing** — climbs the left/right monitor edges and walks back across the top.
-- **File eater** — drag any file/folder onto Clawd and it gets moved to the Recycle Bin (safe, recoverable).
+- **Review-first file eater** — before anything moves, a native dialog lists each file's name, full location, and size; for folders it warns that all contents move too. The home folder, standard Windows user folders, links, and junctions are protected.
 - **Hover chat** — move the cursor over Clawd to open a small assistant chat window; the pet's movement window stays separate.
 - **Ollama Cloud chat** — connect an API key from Settings; requests are sent from the Rust backend to Ollama's OpenAI-compatible API, never directly from browser code.
 - **Tasks and reminders** — ask Clawd to add a TODO or set a reminder in local system time; tasks are saved locally and reminders fire while Clawd is running.
@@ -62,6 +62,7 @@ Inspired by Shimeji — a small crab named Clawd lives on your desktop, walks ac
 - **Auto-cycle idle states** — Clawd randomly switches between walking, working, sleeping, etc. when idle.
 - **Multi-monitor + HiDPI aware** — pet positions correctly across monitors with different DPI scaling (100%, 150%, 200%).
 - **Tray menu** — Show / Hide / Force Sleep / Wake Up / Reset Position / Exit.
+- **Start with Windows** — an on/off toggle in Settings makes the pet appear automatically when you sign in.
 - **Single instance** — running Clawd a second time just focuses the existing one.
 
 ---
@@ -70,7 +71,7 @@ Inspired by Shimeji — a small crab named Clawd lives on your desktop, walks ac
 
 ### Option 1 — Pre-built installer (easiest)
 
-Grab the latest release from the **[Releases page](https://github.com/Hert4/clawd-window/releases)** and run one of:
+Download the **Clawd-Windows-Installers** artifact from the **[Actions tab](https://github.com/nadeemmhdm/clawd-window/actions/workflows/windows-installer.yml)** for the `feature/ollama-pet-assistant` branch, then run one of:
 
 | File | Type | Size | Notes |
 |---|---|---|---|
@@ -96,7 +97,8 @@ After install, **Clawd** appears as a floating crab near the bottom-right of you
 | Hover Clawd | Opens the chat panel with a message box and Send button |
 | Ask for a TODO/reminder | Adds a local task; reminders use your computer's local time while Clawd is running |
 | Ask to find a filename | Searches only the folders enabled in Settings; choose **Open location** to select it in the file manager |
-| **Drop file** on Clawd | File moves to Recycle Bin (Clawd eats it!) |
+| **Drop file** on Clawd | Review the name, full path, and size in a confirmation dialog; choose Yes to move it to the Recycle Bin or No to keep it |
+| Drop an entire standard user folder | Rejected; choose a specific file or subfolder instead |
 | **Right-click** tray icon | Open menu (Show/Hide/Sleep/Reset/Exit) |
 | Move cursor near Clawd | Eyes track your cursor |
 | Leave Clawd alone | Auto-cycles through animations; sleeps after ~5 min idle |
@@ -110,9 +112,11 @@ Hover over Clawd and open **Settings**. Create an API key in [Ollama Cloud](http
 
 The assistant sends your chat message to Ollama Cloud. Chat history is kept in memory only. Tasks and reminders are stored in the app's local data folder. Reminders are checked against the computer's system clock and appear in Clawd while the app is running.
 
+In **Settings → Start with Windows**, turn on **Show the pet when I sign in** to have Clawd appear automatically after you sign in. The setting is off until you enable it and can be turned off there at any time.
+
 Filename search is disabled until you select one or more known folders in Settings. Search runs locally, follows no symlinks, and returns filenames and locations only—not file contents. A file is never opened automatically: choose **Open location** to reveal it in the file manager. The assistant cannot run shell commands or modify files.
 
-The local control API remains bound to `127.0.0.1`, requires a generated bearer token, and limits request size and file-eater batches. API-driven file deletion is disabled by default; dragging a file onto the pet remains a manual action. The file eater rejects the home folder itself, and only the pet window can invoke it. The Tauri WebView uses a restrictive Content Security Policy.
+The local control API remains bound to `127.0.0.1`, requires a generated bearer token, and limits request size and file-eater batches. API-driven file deletion is disabled by default; if explicitly enabled, it still shows the same confirmation dialog. The file eater rejects the home folder, standard user-data/app-data roots, symbolic links, and Windows junctions. After you confirm, it revalidates every target before moving anything. The Tauri WebView uses a restrictive Content Security Policy.
 
 ---
 
@@ -121,13 +125,13 @@ The local control API remains bound to `127.0.0.1`, requires a generated bearer 
 ### Prerequisites
 
 - **Windows 10/11** (64-bit)
-- **[Rust](https://rustup.rs)** ≥ 1.77 (`rustup default stable`)
+- **[Rust](https://rustup.rs)** ≥ 1.90 (`rustup default stable`)
 - **[Microsoft C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/)** — required for linking on Windows
 - **[WebView2 Runtime](https://developer.microsoft.com/en-us/microsoft-edge/webview2/)** — pre-installed on Windows 11
 
 Verify:
 ```powershell
-rustc --version    # 1.77 or newer
+rustc --version    # 1.90 or newer
 cargo --version
 ```
 
@@ -161,7 +165,7 @@ src-tauri/target/release/bundle/
 └── nsis/clawd_0.1.0_x64-setup.exe     # NSIS installer (recommended)
 ```
 
-Both come with a multi-resolution icon (16/24/32/48/64/128/256) embedded in the `.exe`, so the Start Menu / Desktop shortcut shows Clawd at every DPI.
+Both come with a multi-resolution icon (16/24/32/48/64/128/256) embedded in the `.exe`, so the Start Menu / Desktop shortcut shows Clawd at every DPI. The repository's **Build Windows Installers** GitHub Actions workflow builds both formats on a Windows runner and uploads them as a downloadable artifact; the workflow can be run manually from the Actions tab.
 
 ### Regenerate icons (optional)
 
@@ -192,7 +196,7 @@ clawd-window/
 │   │   ├── state.rs                  # PetState enum + Arc<RwLock>
 │   │   ├── pet_controller.rs         # Walking, climbing, gravity tick (60 Hz)
 │   │   ├── window_tracker.rs         # Win32 EnumWindows polling
-│   │   ├── file_eater.rs             # trash crate -> Recycle Bin; rejects the home folder itself
+│   │   ├── file_eater.rs             # review dialog, protected folders, then move to Recycle Bin
 │   │   ├── http_api.rs               # Loopback API protected by a generated bearer token
 │   │   └── tray.rs                   # Tray icon + menu
 │   ├── icons/                        # App icons (PNG + ICO + ICNS)
@@ -208,7 +212,7 @@ clawd-window/
 
 | Layer | Tech |
 |---|---|
-| Window / runtime | [Tauri 2.10](https://tauri.app) — Rust backend + WebView2 frontend |
+| Window / runtime | [Tauri 2.12](https://tauri.app) — Rust backend + WebView2 frontend |
 | Backend language | [Rust 2021](https://www.rust-lang.org) |
 | Frontend | Vanilla HTML/CSS/JS (no bundler) |
 | Pet rendering | SVG with `@keyframes` CSS animations, swapped via `<object data>` to avoid CSS scope collisions |

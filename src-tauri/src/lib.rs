@@ -114,6 +114,26 @@ fn get_state_cmd(state: tauri::State<'_, SharedState>) -> StatePayload {
     s.into()
 }
 
+#[tauri::command]
+fn autostart_enabled(app: AppHandle) -> Result<bool, String> {
+    use tauri_plugin_autostart::ManagerExt;
+    app.autolaunch()
+        .is_enabled()
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+fn set_autostart(enabled: bool, app: AppHandle) -> Result<bool, String> {
+    use tauri_plugin_autostart::ManagerExt;
+    let manager = app.autolaunch();
+    if enabled {
+        manager.enable().map_err(|error| error.to_string())?;
+    } else {
+        manager.disable().map_err(|error| error.to_string())?;
+    }
+    manager.is_enabled().map_err(|error| error.to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let shared = new_shared_state();
@@ -123,6 +143,11 @@ pub fn run() {
     let mood = new_shared_mood();
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_autostart::init(
+            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+            Some(vec![]),
+        ))
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
             if let Some(w) = app.get_webview_window("main") {
                 let _ = w.show();
@@ -189,6 +214,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             set_state_cmd,
             get_state_cmd,
+            autostart_enabled,
+            set_autostart,
             set_assistant_hover,
             assistant::assistant_settings,
             assistant::save_ollama_api_key,

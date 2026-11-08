@@ -49,6 +49,13 @@
         <div class="inline-row"><input id="api-key" type="password" maxlength="512" placeholder="Paste key to connect" autocomplete="new-password" /><button id="save-key" class="secondary-button" type="button">Save key</button></div>
         <div class="inline-row key-actions"><span id="key-status" class="muted">Not connected</span><button id="clear-key" class="text-button danger" type="button">Clear saved key</button></div>
       </form>
+      <div class="privacy-box startup-box">
+        <h2>Start with Windows</h2>
+        <label class="startup-option" for="startup-toggle">
+          <input id="startup-toggle" type="checkbox" />
+          <span><strong>Show the pet when I sign in</strong><span class="folder-path">When enabled, Clawd opens automatically after you sign in. Turn this off any time.</span></span>
+        </label>
+      </div>
       <div class="privacy-box">
         <h2>Local file search</h2>
         <p>Clawd searches filenames only in folders you enable. It does not read file contents. Search stays on this computer; your message goes to Ollama Cloud so it can understand what you asked.</p>
