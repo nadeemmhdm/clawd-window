@@ -9,7 +9,6 @@ const messagesEl = document.getElementById("messages");
 const promptEl = document.getElementById("prompt");
 const sendEl = document.getElementById("send");
 const composerEl = document.getElementById("chat-form");
-const askAgainEl = document.getElementById("ask-again");
 let toastTimer = null;
 
 function showView(id) {
@@ -21,7 +20,7 @@ function showView(id) {
   }
   if (id === "tasks-view") refreshTodos();
   if (id === "settings-view") refreshSettings();
-  if (id === "chat-view") setTimeout(() => (composerEl.hidden ? askAgainEl : promptEl).focus(), 20);
+  if (id === "chat-view") setTimeout(() => promptEl.focus(), 20);
 }
 
 function addMessage(role, text, isError = false) {
@@ -127,8 +126,7 @@ async function sendMessage(text) {
   fileResults.hidden = true;
   promptEl.value = "";
   promptEl.style.height = "auto";
-  composerEl.hidden = true;
-  askAgainEl.hidden = true;
+  promptEl.disabled = true;
   sendEl.disabled = true;
   sendEl.textContent = "…";
   announce("Clawd is thinking…");
@@ -148,21 +146,16 @@ async function sendMessage(text) {
     announce("");
   } finally {
     await setPetAiWorking(false);
+    promptEl.disabled = false;
     sendEl.disabled = false;
     sendEl.textContent = "Send";
-    composerEl.hidden = true;
-    askAgainEl.hidden = false;
+    if (!document.getElementById("chat-view").hidden) promptEl.focus();
   }
 }
 
 document.getElementById("chat-form").addEventListener("submit", (event) => {
   event.preventDefault();
   sendMessage(promptEl.value);
-});
-askAgainEl.addEventListener("click", () => {
-  askAgainEl.hidden = true;
-  composerEl.hidden = false;
-  promptEl.focus();
 });
 promptEl.addEventListener("keydown", (event) => {
   if (event.key === "Enter" && !event.shiftKey) {
@@ -194,7 +187,7 @@ async function refreshTodos() {
     if (!todos.length) {
       const empty = document.createElement("li");
       empty.className = "muted";
-      empty.textContent = "No tasks yet. Add one here or ask Clawd in chat.";
+      empty.textContent = "No tasks yet. Tell Clawd in chat what you need to do.";
       list.appendChild(empty);
       return;
     }
@@ -240,18 +233,6 @@ async function refreshTodos() {
     list.appendChild(row);
   }
 }
-
-document.getElementById("todo-form").addEventListener("submit", async (event) => {
-  event.preventDefault();
-  const input = document.getElementById("todo-title");
-  const title = input.value.trim();
-  if (!title) return;
-  try {
-    await invoke("add_todo", { title });
-    input.value = "";
-    await refreshTodos();
-  } catch (error) { showToast(errorText(error)); }
-});
 
 async function refreshSettings() {
   const status = document.getElementById("settings-status");
@@ -380,5 +361,11 @@ listen("reminder-due", (event) => {
   showToast(`Reminder: ${task.title}`);
   if (!document.getElementById("tasks-view").hidden) refreshTodos();
 }).catch(() => {});
+
+window.addEventListener("focus", () => {
+  if (!document.getElementById("chat-view").hidden) {
+    setTimeout(() => promptEl.focus(), 20);
+  }
+});
 
 refreshAll();

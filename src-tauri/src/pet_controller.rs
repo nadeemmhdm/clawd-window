@@ -87,11 +87,10 @@ pub fn spawn_auto_cycle(app: AppHandle, state: SharedState, external_until: Exte
                 }
             }
 
-            // Resting mood cycles faster (more reaction variety, no walking).
-            // Active mood paces normally with walking mixed in.
+            // Keep the pet lively but leave quiet pauses between short strolls.
             let wait = match cur_mood {
-                Mood::Active => rng.gen_range(20..45),
-                Mood::Resting => rng.gen_range(12..28),
+                Mood::Active => rng.gen_range(10..22),
+                Mood::Resting => rng.gen_range(14..26),
                 Mood::Sleepy => 30, // unreachable here
             };
             sleep(Duration::from_secs(wait)).await;
@@ -117,9 +116,9 @@ pub fn spawn_auto_cycle(app: AppHandle, state: SharedState, external_until: Exte
 
             let next: PetState = match cur_mood {
                 Mood::Active => {
-                    // 60% walking, 40% working — pet roams more.
+                    // Most active cycles are visible walks rather than stationary poses.
                     let pick: u32 = rng.gen_range(0..10);
-                    if pick < 6 {
+                    if pick < 8 {
                         let dir = if rng.gen_bool(0.5) { Direction::Left } else { Direction::Right };
                         PetState::Walking { dir }
                     } else {
@@ -130,10 +129,15 @@ pub fn spawn_auto_cycle(app: AppHandle, state: SharedState, external_until: Exte
                     }
                 }
                 Mood::Resting => {
-                    // Pet stays put — only working states (reactions).
-                    match working_states().choose(&mut rng) {
-                        Some(s) => *s,
-                        None => continue,
+                    // Resting still includes an occasional gentle walk across the screen.
+                    if rng.gen_range(0..10) < 2 {
+                        let dir = if rng.gen_bool(0.5) { Direction::Left } else { Direction::Right };
+                        PetState::Walking { dir }
+                    } else {
+                        match working_states().choose(&mut rng) {
+                            Some(s) => *s,
+                            None => continue,
+                        }
                     }
                 }
                 Mood::Sleepy => continue, // handled above
@@ -142,7 +146,11 @@ pub fn spawn_auto_cycle(app: AppHandle, state: SharedState, external_until: Exte
             set_state(&app, &state, next);
 
             let hold = if matches!(next, PetState::Walking { .. }) {
-                rng.gen_range(6..12)
+                if cur_mood == Mood::Active {
+                    rng.gen_range(10..18)
+                } else {
+                    rng.gen_range(7..12)
+                }
             } else {
                 rng.gen_range(6..14)
             };

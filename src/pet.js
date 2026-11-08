@@ -13,13 +13,14 @@ const objSvg = document.getElementById("clawd");
 const objImg = document.getElementById("clawd-img");
 const objVid = document.getElementById("clawd-vid");
 const overlay = document.getElementById("overlay");
+const petGreeting = document.getElementById("pet-greeting");
 
 let currentState = "idle_living";
 let currentDirection = null;
 let currentEdge = null;
 let currentEyesEl = null;
-let preHappyState = null;
 let currentManifest = null;
+let greetingTimer = null;
 
 // Cycler state: shuffled-no-repeat rotation through manifest.pool for idle packs.
 // Only swaps the displayed asset while pet is in idle_living — state changes
@@ -295,11 +296,26 @@ overlay.addEventListener("mouseleave", () => {
 });
 
 function onClick() {
-  preHappyState = currentState;
+  if (petGreeting) petGreeting.hidden = true;
+  clearTimeout(greetingTimer);
   invoke("set_state_cmd", { stateKey: "happy" }).catch(() => {});
+  invoke("open_assistant").catch((error) => console.warn("Could not open assistant:", error));
   setTimeout(() => {
-    invoke("set_state_cmd", { stateKey: "idle_living" }).catch(() => {});
+    if (currentState === "happy") invoke("set_state_cmd", { stateKey: "idle_living" }).catch(() => {});
   }, 1500);
+}
+
+function showPetGreeting() {
+  if (!petGreeting) return;
+  const greetings = [
+    "Hi! What are you working on today?",
+    "Hey! Need help finding something?",
+    "Hello! What should we tackle together?",
+  ];
+  petGreeting.textContent = greetings[Math.floor(Math.random() * greetings.length)];
+  petGreeting.hidden = false;
+  clearTimeout(greetingTimer);
+  greetingTimer = setTimeout(() => { petGreeting.hidden = true; }, 7_000);
 }
 
 document.addEventListener("contextmenu", (e) => {
@@ -383,6 +399,7 @@ async function init() {
   } catch (err) {
     console.warn("get_state_cmd failed:", err);
   }
+  setTimeout(showPetGreeting, 1_000);
 }
 
 window.addEventListener("DOMContentLoaded", () => {

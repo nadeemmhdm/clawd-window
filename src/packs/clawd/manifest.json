@@ -15,7 +15,7 @@
     "disconnected":        "assets/clawd-disconnected.svg",
     "notification":        "assets/clawd-notification.svg",
     "working_typing":      "assets/clawd-working-typing.svg",
-    "working_thinking":    "assets/clawd-working-thinking.svg",
+    "working_thinking":    "assets/clawd-working-typing.svg",
     "working_juggling":    "assets/clawd-working-juggling.svg",
     "working_building":    "assets/clawd-working-building.svg",
     "working_carrying":    "assets/clawd-working-carrying.svg",

@@ -19,6 +19,44 @@ const MAX_TITLE_CHARS: usize = 200;
 const MAX_RESULTS: usize = 40;
 const MAX_VISITED_ENTRIES: usize = 12_000;
 const MAX_SEARCH_DEPTH: usize = 6;
+const SEARCH_STOP_WORDS: &[&str] = &[
+    "find",
+    "search",
+    "locate",
+    "look",
+    "please",
+    "where",
+    "show",
+    "open",
+    "get",
+    "the",
+    "a",
+    "an",
+    "my",
+    "me",
+    "for",
+    "in",
+    "on",
+    "from",
+    "of",
+    "to",
+    "with",
+    "and",
+    "can",
+    "you",
+    "file",
+    "files",
+    "document",
+    "documents",
+    "folder",
+    "folders",
+    "download",
+    "downloads",
+    "pdf",
+    "kandethan",
+    "kandeth",
+    "kandu",
+];
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TodoItem {
@@ -486,16 +524,72 @@ pub async fn search_files(
     {
         return Err("Search text must be between 2 and 120 characters.".into());
     }
+    if state.data.lock().enabled_folders.is_empty() {
+        return Err(
+            "No folders are enabled. Turn on filename search for one or more folders in Settings."
+                .into(),
+        );
+    }
     let roots = enabled_roots(&state);
     if roots.is_empty() {
         return Err(
-            "No folders are enabled. Turn on filename search for one or more folders in Settings."
+            "The folders you enabled are not available right now. Check their locations in Settings."
                 .into(),
         );
     }
     tauri::async_runtime::spawn_blocking(move || search_roots(&query, roots))
         .await
         .map_err(|e| format!("file search failed: {e}"))?
+}
+
+fn normalized_search_words(value: &str) -> Vec<String> {
+    value
+        .to_lowercase()
+        .split(|character: char| !character.is_alphanumeric())
+        .filter(|word| !word.is_empty())
+        .map(str::to_string)
+        .collect()
+}
+
+fn filename_matches_query(name: &str, query: &str) -> bool {
+    let query_words = normalized_search_words(query);
+    let wants_pdf = query_words.iter().any(|word| word == "pdf");
+    if wants_pdf
+        && !Path::new(name)
+            .extension()
+            .and_then(|extension| extension.to_str())
+            .is_some_and(|extension| extension.eq_ignore_ascii_case("pdf"))
+    {
+        return false;
+    }
+
+    let meaningful_words: Vec<&str> = query_words
+        .iter()
+        .map(String::as_str)
+        .filter(|word| !SEARCH_STOP_WORDS.contains(word))
+        .collect();
+    if meaningful_words.is_empty() {
+        return wants_pdf;
+    }
+
+    let name_words = normalized_search_words(name);
+    let normalized_name = name_words.join(" ");
+    let compact_name = name_words.join("");
+    let compact_query = query_words.join("");
+    if normalized_name.contains(&query_words.join(" ")) || compact_name.contains(&compact_query) {
+        return true;
+    }
+
+    let matches = meaningful_words
+        .iter()
+        .filter(|word| normalized_name.contains(**word) || compact_name.contains(**word))
+        .count();
+    let required = if meaningful_words.len() <= 2 {
+        meaningful_words.len()
+    } else {
+        2
+    };
+    matches >= required
 }
 
 fn search_roots(
@@ -547,7 +641,7 @@ fn search_roots(
                     if depth < MAX_SEARCH_DEPTH {
                         stack.push((canonical, depth + 1));
                     }
-                } else if metadata.is_file() && name.to_lowercase().contains(query) {
+                } else if metadata.is_file() && filename_matches_query(&name, query) {
                     results.push(FileMatch {
                         name,
                         folder_name: folder_name.clone(),
@@ -623,9 +717,9 @@ pub fn reveal_file(
 
 fn make_tools() -> Value {
     json!([
-      {"type":"function","function":{"name":"add_task","description":"Add a task to Clawd's local task list when the user asks for a TODO or task.","parameters":{"type":"object","properties":{"title":{"type":"string"}},"required":["title"]}}},
+      {"type":"function","function":{"name":"add_task","description":"Add a concrete future action to Clawd's local task list when the user asks for a task or clearly says they need, plan, or intend to do something, or asks you to remember it. Do not require the literal words task or TODO.","parameters":{"type":"object","properties":{"title":{"type":"string"}},"required":["title"]}}},
       {"type":"function","function":{"name":"set_reminder","description":"Create a local reminder only when the user explicitly asks to be reminded. Use an RFC3339 due_at timestamp with the user's local UTC offset.","parameters":{"type":"object","properties":{"title":{"type":"string"},"due_at":{"type":"string","description":"RFC3339 local time with UTC offset, e.g. 2026-11-08T17:30:00+05:30"}},"required":["title","due_at"]}}},
-      {"type":"function","function":{"name":"search_files","description":"Search filenames only inside folders the user enabled. Never read file contents. Use when the user asks to find/locate a file.","parameters":{"type":"object","properties":{"query":{"type":"string","description":"Filename or part of a filename to search for"}},"required":["query"]}}}
+      {"type":"function","function":{"name":"search_files","description":"Search filenames only inside folders the user enabled. Never read file contents. Match important words across spaces, hyphens, underscores, or combined words; treat PDF as a file-type filter. Use a short query when the user asks to find or locate a file.","parameters":{"type":"object","properties":{"query":{"type":"string","description":"Short identifying filename words or file type"}},"required":["query"]}}}
     ])
 }
 
@@ -703,7 +797,7 @@ pub async fn assistant_chat(
     let api_key = read_api_key().map_err(|error| error.user_message())?;
     let model = state.data.lock().model.clone();
     let mut messages = vec![json!({"role":"system","content":format!(
-        "You are Clawd, a friendly and concise desktop pet assistant. Be warm, reassuring, and honest; reply in the user's language. {} You may use only these tools: add a task, create a reminder, or search filenames in folders the user has explicitly enabled. When the user asks for one of these actions, use the matching tool. Never claim an action succeeded before a tool succeeds. Never read, upload, modify, delete, or execute local files; filename search returns names and locations only. Never run commands or control other apps. For reminders, use RFC3339 with the current local offset. If a request is ambiguous, ask instead of guessing.", local_clock_context()
+        "You are Clawd, a friendly and concise desktop pet assistant. Be warm, reassuring, and honest; reply in the user's language. {} You may use only these tools: add a task, create a reminder, or search filenames in folders the user has explicitly enabled. Automatically add a task when the user clearly describes a concrete future action they need or plan to do, or asks you to remember it; do not make them say the words task or TODO. This includes casual phrases such as ‘I need to…’, ‘I have to…’, ‘don’t let me forget…’, ‘remember to…’, and equivalent Malayalam/Manglish phrases like ‘… cheyyanam’, ‘… cheyyan undu’, or ‘… marakkaruthu’. Do not add tasks for completed actions or when the user is only asking for advice. Create a reminder only when they explicitly ask to be reminded; ask a short question if the time is unclear. Never claim an action succeeded before a tool succeeds. Never read, upload, modify, delete, or execute local files; filename search returns names and locations only and does not inspect document contents. Never run commands or control other apps. For reminders, use RFC3339 with the current local offset. If another request is ambiguous, ask instead of guessing.", local_clock_context()
     )})];
     for message in history
         .into_iter()
@@ -877,15 +971,18 @@ async fn handle_tool_call(
             {
                 return Err("Search text must be between 2 and 120 characters.".into());
             }
+            if state.data.lock().enabled_folders.is_empty() {
+                return Err("No folders are enabled yet. Open Settings and allow filename search in the folders you want.".into());
+            }
             let roots = enabled_roots(state);
             if roots.is_empty() {
-                return Err("No folders are enabled yet. Open Settings and allow filename search in the folders you want.".into());
+                return Err("The folders you enabled are not available right now. Check their locations in Settings.".into());
             }
             let files = tauri::async_runtime::spawn_blocking(move || search_roots(&query, roots))
                 .await
                 .map_err(|e| format!("file search failed: {e}"))??;
             let text = if files.is_empty() {
-                "I couldn’t find a matching filename in the folders you enabled.".to_string()
+                "I couldn’t find a matching filename in the folders you enabled. I search names only, not document contents; try fewer words from the file’s name.".to_string()
             } else {
                 format!("I found {} matching file(s). Choose “Open location” to show one in your file manager.", files.len())
             };
@@ -985,6 +1082,35 @@ mod tests {
         assert!(results.iter().any(|r| r.name == "apple.png"));
         assert!(results.iter().any(|r| r.name == "Apple-notes.txt"));
         std::fs::remove_dir_all(base).unwrap();
+    }
+
+    #[test]
+    fn filename_search_matches_word_variants_and_pdf_filter() {
+        assert!(filename_matches_query(
+            "Cyber-Security_Guide.PDF",
+            "find cyber security pdf in Downloads"
+        ));
+        assert!(filename_matches_query(
+            "Cyber-Security_Guide.PDF",
+            "find cybersecurity pdf in Downloads"
+        ));
+        assert!(filename_matches_query(
+            "Cybersecurity-Guide.pdf",
+            "cyber security PDF"
+        ));
+        assert!(filename_matches_query(
+            "Cyber Security.pdf",
+            "cybersecurity"
+        ));
+        assert!(filename_matches_query("manual.pdf", "PDF"));
+        assert!(!filename_matches_query(
+            "cyber-security.txt",
+            "cyber security PDF"
+        ));
+        assert!(!filename_matches_query(
+            "accounting.pdf",
+            "cyber security PDF"
+        ));
     }
 
     #[cfg(unix)]

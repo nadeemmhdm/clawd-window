@@ -143,7 +143,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
   border-radius: 12px;
   background: rgba(4, 10, 11, .46);
 }
-.composer[hidden], .ask-again[hidden], .file-results[hidden] { display: none; }
+.composer[hidden], .file-results[hidden] { display: none; }
 textarea, input {
   min-width: 0;
   color: #f4f7f5;
@@ -183,7 +183,6 @@ input::placeholder, textarea::placeholder { color: #82918c; }
   padding: 8px 10px;
 }
 .secondary-button:hover { background: rgba(139, 215, 183, .18); }
-.ask-again { align-self: flex-end; }
 .small-status { min-height: 14px; color: #aab8b2; font-size: 10px; line-height: 1.35; }
 
 .file-results {
@@ -204,8 +203,6 @@ input::placeholder, textarea::placeholder { color: #82918c; }
 .section-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 3px; }
 h1 { margin: 0; font-size: 17px; }
 h2 { margin: 0 0 6px; font-size: 14px; }
-.todo-form { display: flex; gap: 8px; margin-bottom: 3px; }
-.todo-form input { flex: 1; }
 .todo-list { min-height: 0; flex: 1; overflow-y: auto; list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 7px; }
 .todo-item { display: flex; gap: 8px; align-items: flex-start; padding: 9px; border-radius: 10px; background: rgba(255, 255, 255, .065); }
 .todo-item input[type=checkbox] { accent-color: #8bd7b7; margin: 2px 0 0; }

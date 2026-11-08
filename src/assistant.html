@@ -20,7 +20,7 @@
 
     <section class="view active" id="chat-view" aria-label="Chat">
       <div class="messages" id="messages" role="log" aria-live="polite" aria-relevant="additions text">
-        <div class="message assistant welcome"><span class="message-speaker">Clawd</span><p>Hi, I’m Clawd. What can I help you with?</p></div>
+        <div class="message assistant welcome"><span class="message-speaker">Clawd</span><p>Hi! What are you working on today? I can help find a file, remember a task, or set a reminder.</p></div>
       </div>
       <div class="file-results" id="file-results" hidden></div>
       <form class="composer" id="chat-form">
@@ -28,17 +28,12 @@
         <textarea id="prompt" rows="1" maxlength="2000" placeholder="Type a message…" autocomplete="off"></textarea>
         <button id="send" class="send-button" type="submit" aria-label="Send message">Send</button>
       </form>
-      <button id="ask-again" class="ask-again secondary-button" type="button" hidden>Ask another question</button>
       <div class="small-status" id="chat-status" aria-live="polite"></div>
     </section>
 
     <section class="view" id="tasks-view" aria-label="Tasks and reminders" hidden>
       <div class="section-heading"><h1>Tasks & reminders</h1><button class="text-button" data-view="chat-view" type="button">Back to chat</button></div>
-      <form id="todo-form" class="todo-form">
-        <label class="visually-hidden" for="todo-title">New task</label>
-        <input id="todo-title" maxlength="200" placeholder="Add a task…" autocomplete="off" />
-        <button class="send-button" type="submit">Add</button>
-      </form>
+      <p class="muted">Tell Clawd in chat what you need to do or remember. This list is optional for reviewing, completing, or removing tasks.</p>
       <ul id="todo-list" class="todo-list"></ul>
       <p class="muted">Reminders use your computer’s local time and are checked while Clawd is running.</p>
     </section>
@@ -65,7 +60,7 @@
       </div>
       <div class="privacy-box">
         <h2>Local file search</h2>
-        <p>Clawd searches filenames only in folders you enable. It does not read file contents. Search stays on this computer; your message goes to Ollama Cloud so it can understand what you asked.</p>
+        <p>Clawd searches filenames only in folders you enable. It matches words across spaces, hyphens, underscores, and combined words; “PDF” filters to PDF files. It never reads document contents. Search stays on this computer; your message goes to Ollama Cloud so it can understand what you asked.</p>
         <div id="folder-options" class="folder-options"></div>
       </div>
       <p class="muted">Chats stay in memory and are not saved. Tasks and reminders are stored locally. Your API key is kept in the operating system credential store, not in browser storage.</p>

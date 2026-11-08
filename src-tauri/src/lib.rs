@@ -47,23 +47,27 @@ fn set_assistant_hover(
         }
     }
     if inside {
-        show_assistant_at_pet(&app)?;
-    } else {
-        let flags = hover.0.clone();
-        tauri::async_runtime::spawn(async move {
-            tokio::time::sleep(std::time::Duration::from_millis(750)).await;
-            let should_hide = {
-                let current = flags.lock();
-                !current.pet && !current.panel
-            };
-            if should_hide {
-                if let Some(window) = app.get_webview_window("assistant") {
-                    let _ = window.hide();
-                }
-            }
-        });
+        return Ok(());
     }
+    let flags = hover.0.clone();
+    tauri::async_runtime::spawn(async move {
+        tokio::time::sleep(std::time::Duration::from_millis(1_250)).await;
+        let should_hide = {
+            let current = flags.lock();
+            !current.pet && !current.panel
+        };
+        if should_hide {
+            if let Some(window) = app.get_webview_window("assistant") {
+                let _ = window.hide();
+            }
+        }
+    });
     Ok(())
+}
+
+#[tauri::command]
+fn open_assistant(app: AppHandle) -> Result<(), String> {
+    show_assistant_at_pet(&app)
 }
 
 fn show_assistant_at_pet(app: &AppHandle) -> Result<(), String> {
@@ -89,7 +93,8 @@ fn show_assistant_at_pet(app: &AppHandle) -> Result<(), String> {
     panel
         .set_position(PhysicalPosition::new(x, y))
         .map_err(|e| e.to_string())?;
-    panel.show().map_err(|e| e.to_string())
+    panel.show().map_err(|e| e.to_string())?;
+    panel.set_focus().map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -232,6 +237,7 @@ pub fn run() {
             autostart_enabled,
             set_autostart,
             set_assistant_hover,
+            open_assistant,
             assistant::assistant_settings,
             assistant::save_ollama_api_key,
             assistant::clear_ollama_api_key,
