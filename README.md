@@ -10,7 +10,7 @@ Inspired by Shimeji — a small crab named Clawd lives on your desktop, walks ac
 [![Tauri](https://img.shields.io/badge/Tauri-2.12-FFC131?logo=tauri&logoColor=white)](https://tauri.app)
 [![Rust](https://img.shields.io/badge/Rust-2021-000000?logo=rust&logoColor=white)](https://www.rust-lang.org)
 [![Windows](https://img.shields.io/badge/Windows-10%2F11-0078D4?logo=windows&logoColor=white)](#)
-[![Release](https://img.shields.io/badge/release-0.1.0-blue)](#install)
+[![Release](https://img.shields.io/badge/release-0.2.0-blue)](#install)
 
 </div>
 
@@ -56,6 +56,7 @@ Inspired by Shimeji — a small crab named Clawd lives on your desktop, walks ac
 - **Review-first file eater** — before anything moves, a native dialog lists each file's name, full location, and size; for folders it warns that all contents move too. The home folder, standard Windows user folders, links, and junctions are protected.
 - **Hover chat** — move the cursor over Clawd to open a small assistant chat window; the pet's movement window stays separate.
 - **Ollama Cloud chat** — connect an API key from Settings; requests are sent from the Rust backend to Ollama's OpenAI-compatible API, never directly from browser code.
+- **Activity animations** — Windows keyboard activity triggers the animated typing pose; the separate thinking pose stays active while Ollama replies and runs its tools. Keyboard content is never captured, stored, or sent.
 - **Tasks and reminders** — ask Clawd to add a TODO or set a reminder in local system time; tasks are saved locally and reminders fire while Clawd is running.
 - **Filename search** — optionally allow-list Downloads, Documents, Pictures, Videos, and Music; Clawd searches names only and can reveal a match in the file manager without opening or reading it.
 - **Privacy controls** — chat history is session-only, tasks remain local, the API key uses the operating system credential store, and file search is off until folders are enabled.
@@ -71,12 +72,12 @@ Inspired by Shimeji — a small crab named Clawd lives on your desktop, walks ac
 
 ### Option 1 — Pre-built installer (easiest)
 
-Download the **Clawd-Windows-Installers** artifact from the **[Actions tab](https://github.com/nadeemmhdm/clawd-window/actions/workflows/windows-installer.yml)** for the `feature/ollama-pet-assistant` branch. It always includes the MSI; the NSIS setup EXE is included when that optional packaging step succeeds.
+Download the MSI from the **[Clawd v0.2.0 release](https://github.com/nadeemmhdm/clawd-window/releases/tag/v0.2.0)**. The build also uploads the **Clawd-Windows-Installers** artifact to the [Actions tab](https://github.com/nadeemmhdm/clawd-window/actions/workflows/windows-installer.yml); it always includes the MSI and may include the optional NSIS setup EXE.
 
 | File | Type | Size | Notes |
 |---|---|---|---|
-| `clawd_0.1.0_x64-setup.exe` | NSIS installer | ~1.9 MB | Recommended |
-| `clawd_0.1.0_x64_en-US.msi` | MSI installer | ~2.9 MB | For enterprise / silent install |
+| `clawd_0.2.0_x64-setup.exe` | NSIS installer | ~1.9 MB | Recommended |
+| `clawd_0.2.0_x64_en-US.msi` | MSI installer | ~2.9 MB | For enterprise / silent install |
 
 > Windows SmartScreen may warn the binary isn't signed — click **More info → Run anyway**.
 
@@ -161,8 +162,8 @@ The build produces two installers in `src-tauri/target/release/bundle/`:
 
 ```
 src-tauri/target/release/bundle/
-├── msi/clawd_0.1.0_x64_en-US.msi      # MSI for enterprise / silent install
-└── nsis/clawd_0.1.0_x64-setup.exe     # NSIS installer (recommended)
+├── msi/clawd_0.2.0_x64_en-US.msi      # MSI for enterprise / silent install
+└── nsis/clawd_0.2.0_x64-setup.exe     # NSIS installer (recommended)
 ```
 
 Both come with a multi-resolution icon (16/24/32/48/64/128/256) embedded in the `.exe`, so the Start Menu / Desktop shortcut shows Clawd at every DPI. Pushing to the `feature/ollama-pet-assistant` branch triggers the **Build Windows Installers** GitHub Actions workflow. It builds and uploads the MSI first, then attempts the NSIS setup EXE; an NSIS download failure does not discard the MSI.

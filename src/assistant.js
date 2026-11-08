@@ -89,6 +89,10 @@ function errorText(error) {
   return typeof error === "string" ? error : (error && error.message) ? error.message : String(error || "Something went wrong.");
 }
 
+async function setPetAiWorking(active) {
+  try { await invoke("set_assistant_working", { active }); } catch (_) {}
+}
+
 async function sendMessage(text) {
   const prompt = text.trim();
   if (!prompt || sendEl.disabled) return;
@@ -102,6 +106,7 @@ async function sendMessage(text) {
   sendEl.textContent = "…";
   announce("Clawd is thinking…");
   try {
+    await setPetAiWorking(true);
     const reply = await invoke("assistant_chat", { prompt, history: previousHistory });
     addMessage("assistant", reply.text || "Done.");
     conversation.push({ role: "assistant", content: reply.text || "Done." });
@@ -113,6 +118,7 @@ async function sendMessage(text) {
     addMessage("assistant", message, true);
     announce("");
   } finally {
+    await setPetAiWorking(false);
     sendEl.disabled = false;
     sendEl.textContent = "Send";
     promptEl.focus();

@@ -185,7 +185,10 @@ pub fn spawn_walker(app: AppHandle, state: SharedState, windows: SharedWindows, 
             }
 
             let cur = *state.read();
-            if matches!(cur, PetState::Eating) {
+            if matches!(
+                cur,
+                PetState::Eating | PetState::WorkingTyping | PetState::WorkingThinking
+            ) {
                 initialized = false;
                 continue;
             }

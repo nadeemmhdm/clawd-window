@@ -1,4 +1,5 @@
 // Clawd desktop pet
+mod activity;
 mod assistant;
 mod file_eater;
 mod http_api;
@@ -115,6 +116,11 @@ fn get_state_cmd(state: tauri::State<'_, SharedState>) -> StatePayload {
 }
 
 #[tauri::command]
+fn set_assistant_working(active: bool, tracker: tauri::State<'_, activity::ActivityTracker>) {
+    tracker.set_assistant_busy(active);
+}
+
+#[tauri::command]
 fn autostart_enabled(app: AppHandle) -> Result<bool, String> {
     use tauri_plugin_autostart::ManagerExt;
     app.autolaunch()
@@ -159,6 +165,7 @@ pub fn run() {
         .manage(external_until)
         .manage(pack)
         .manage(mood)
+        .manage(activity::ActivityTracker::default())
         .manage(ChatHoverState::default())
         .setup(|app| {
             if cfg!(debug_assertions) {
@@ -188,6 +195,7 @@ pub fn run() {
             let external_until = app.state::<ExternalUntil>().inner().clone();
             let pack = app.state::<SharedPack>().inner().clone();
             let mood = app.state::<SharedMood>().inner().clone();
+            let activity = app.state::<activity::ActivityTracker>().inner().clone();
 
             #[cfg(windows)]
             let self_hwnd: isize = app
@@ -199,6 +207,12 @@ pub fn run() {
 
             window_tracker::spawn_window_poller(windows.clone(), self_hwnd);
             mood::spawn_mood_thread(mood.clone());
+            activity::spawn_activity_coordinator(
+                app.handle().clone(),
+                shared.clone(),
+                external_until.clone(),
+                activity,
+            );
             pet_controller::spawn_auto_cycle(
                 app.handle().clone(),
                 shared.clone(),
@@ -214,6 +228,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             set_state_cmd,
             get_state_cmd,
+            set_assistant_working,
             autostart_enabled,
             set_autostart,
             set_assistant_hover,
