@@ -28,21 +28,35 @@ jobs:
       - name: Install Tauri v2 CLI
         run: cargo install tauri-cli --version "^2.0" --locked
 
-      - name: Install WiX Toolset for MSI packaging
+      - name: Install WiX and populate Tauri's local tool cache
         run: |
           choco install wixtoolset --version=3.14.1.20250415 --yes --no-progress
-          $wixBin = Join-Path ${env:ProgramFiles(x86)} 'WiX Toolset v3.14\bin'
+          $programFilesX86 = ${env:ProgramFiles(x86)}
+          $wixBin = Join-Path $programFilesX86 'WiX Toolset v3.14\bin'
           if (!(Test-Path (Join-Path $wixBin 'candle.exe')) -or !(Test-Path (Join-Path $wixBin 'light.exe'))) {
             throw "WiX 3.14 was not found at $wixBin"
           }
-          $env:PATH = "$wixBin;$env:PATH"
-          Add-Content -Path $env:GITHUB_PATH -Value $wixBin
+          $wixCache = Join-Path $env:LOCALAPPDATA 'tauri\WixTools314'
+          New-Item -ItemType Directory -Force -Path $wixCache | Out-Null
+          Copy-Item -Path (Join-Path $wixBin '*') -Destination $wixCache -Recurse -Force
+          $requiredFiles = @('candle.exe', 'candle.exe.config', 'darice.cub', 'light.exe', 'light.exe.config', 'wconsole.dll', 'winterop.dll', 'wix.dll', 'WixUIExtension.dll', 'WixUtilExtension.dll')
+          foreach ($file in $requiredFiles) {
+            if (!(Test-Path (Join-Path $wixCache $file))) { throw "Missing cached WiX file: $file" }
+          }
 
-      - name: Build MSI and NSIS installers
+      - name: Build MSI installer
+        id: build_msi
         working-directory: src-tauri
-        run: cargo tauri build --bundles "msi,nsis"
+        run: cargo tauri build --bundles msi
 
-      - name: Upload installers
+      - name: Try NSIS setup installer
+        id: build_nsis
+        continue-on-error: true
+        working-directory: src-tauri
+        run: cargo tauri build --bundles nsis
+
+      - name: Upload Windows installers
+        if: always() && steps.build_msi.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
           name: Clawd-Windows-Installers

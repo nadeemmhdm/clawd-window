@@ -71,7 +71,7 @@ Inspired by Shimeji — a small crab named Clawd lives on your desktop, walks ac
 
 ### Option 1 — Pre-built installer (easiest)
 
-Download the **Clawd-Windows-Installers** artifact from the **[Actions tab](https://github.com/nadeemmhdm/clawd-window/actions/workflows/windows-installer.yml)** for the `feature/ollama-pet-assistant` branch, then run one of:
+Download the **Clawd-Windows-Installers** artifact from the **[Actions tab](https://github.com/nadeemmhdm/clawd-window/actions/workflows/windows-installer.yml)** for the `feature/ollama-pet-assistant` branch. It always includes the MSI; the NSIS setup EXE is included when that optional packaging step succeeds.
 
 | File | Type | Size | Notes |
 |---|---|---|---|
@@ -165,7 +165,7 @@ src-tauri/target/release/bundle/
 └── nsis/clawd_0.1.0_x64-setup.exe     # NSIS installer (recommended)
 ```
 
-Both come with a multi-resolution icon (16/24/32/48/64/128/256) embedded in the `.exe`, so the Start Menu / Desktop shortcut shows Clawd at every DPI. Pushing to the `feature/ollama-pet-assistant` branch triggers the **Build Windows Installers** GitHub Actions workflow, which builds both formats on a Windows runner and uploads a downloadable artifact.
+Both come with a multi-resolution icon (16/24/32/48/64/128/256) embedded in the `.exe`, so the Start Menu / Desktop shortcut shows Clawd at every DPI. Pushing to the `feature/ollama-pet-assistant` branch triggers the **Build Windows Installers** GitHub Actions workflow. It builds and uploads the MSI first, then attempts the NSIS setup EXE; an NSIS download failure does not discard the MSI.
 
 ### Regenerate icons (optional)
 
