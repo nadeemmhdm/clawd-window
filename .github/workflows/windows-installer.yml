@@ -1,6 +1,9 @@
 name: Build Windows Installers
 
 on:
+  push:
+    branches:
+      - feature/ollama-pet-assistant
   workflow_dispatch:
 
 permissions:

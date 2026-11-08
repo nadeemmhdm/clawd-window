@@ -165,7 +165,7 @@ src-tauri/target/release/bundle/
 └── nsis/clawd_0.1.0_x64-setup.exe     # NSIS installer (recommended)
 ```
 
-Both come with a multi-resolution icon (16/24/32/48/64/128/256) embedded in the `.exe`, so the Start Menu / Desktop shortcut shows Clawd at every DPI. The repository's **Build Windows Installers** GitHub Actions workflow builds both formats on a Windows runner and uploads them as a downloadable artifact; the workflow can be run manually from the Actions tab.
+Both come with a multi-resolution icon (16/24/32/48/64/128/256) embedded in the `.exe`, so the Start Menu / Desktop shortcut shows Clawd at every DPI. Pushing to the `feature/ollama-pet-assistant` branch triggers the **Build Windows Installers** GitHub Actions workflow, which builds both formats on a Windows runner and uploads a downloadable artifact.
 
 ### Regenerate icons (optional)
 
