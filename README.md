@@ -12,12 +12,12 @@
 
 ## Downloads
 
-The latest public release is [Clawd v0.2.0](https://github.com/nadeemmhdm/clawd-window/releases/tag/v0.2.0). Download either installer from its release page:
+The latest public release is [Clawd v0.2.2](https://github.com/nadeemmhdm/clawd-window/releases/tag/v0.2.2). Download either installer from its release page:
 
-- **MSI:** `clawd_0.2.0_x64_en-US.msi`
-- **Setup EXE:** `clawd_0.2.0_x64-setup.exe`
+- **MSI:** `clawd_0.2.2_x64_en-US.msi`
+- **Setup EXE:** `clawd_0.2.2_x64-setup.exe`
 
-An updated **v0.2.2 candidate** is being prepared on the `feature/ollama-pet-assistant` branch. Once the Windows build completes, its temporary installer artifact will be available from the branch’s [Windows Actions workflow](https://github.com/nadeemmhdm/clawd-window/actions/workflows/windows-installer.yml). It is not a public release.
+An updated **v0.2.3 testing candidate** with more reliable sleeping and working animations is being prepared on the `feature/ollama-pet-assistant` branch. Once the Windows build completes, its temporary installer artifact will be available from the branch’s [Windows Actions workflow](https://github.com/nadeemmhdm/clawd-window/actions/workflows/windows-installer.yml). It is not a public release.
 
 The installer metadata identifies **NM Developers** as the publisher. This metadata is not a digital signature; until a code-signing certificate is configured, Windows may still show an unsigned-app or SmartScreen warning.
 
@@ -26,7 +26,7 @@ The installer metadata identifies **NM Developers** as the publisher. This metad
 - **Lives on your desktop:** Clawd takes more frequent strolls, climbs window edges, follows your cursor with its eyes, and reacts when clicked or dragged.
 - **Chats like a pet:** Click Clawd to open the dialogue panel; simply moving the cursor over it will not open chat. The message box stays ready after every reply, and only the latest exchange is shown while conversation context remains in memory for the current session.
 - **Connects to Ollama Cloud:** Chat and requested assistant actions run through Ollama’s chat API. The API key is stored in Windows Credential Manager, not in browser storage or project files.
-- **Shows activity poses:** Clawd uses its animated laptop-typing pose while Windows keyboard activity is detected or an AI reply is being generated. Keyboard activity is measured locally; key values and typed text are not captured, stored, or sent.
+- **Shows activity poses:** Clawd uses its animated laptop-typing pose while Windows keyboard activity is detected or an AI reply is being generated. Sleeping and working poses also have a state-driven motion fallback, and the walker pauses while those poses play. Keyboard activity is measured locally; key values and typed text are not captured, stored, or sent.
 - **Manages tasks and reminders:** Tell Clawd what you need to do or remember in chat; it can add a task without requiring the words “task” or “TODO.” Ask explicitly for a reminder to schedule one. Tasks and reminders are stored locally and checked against your computer’s local time while Clawd is running. The Tasks view is optional for reviewing and completing items.
 - **Finds filenames:** Optionally allow access to Downloads, Documents, Pictures, Videos, or Music. Search matches meaningful words across spaces, hyphens, underscores, and combined words; “PDF” acts as a file-type filter. It returns names and locations only, never reads document contents, and stays on the computer. Choose **Open location** to reveal a match in File Explorer.
 - **Protects file deletion:** Dropping a file on Clawd opens a native confirmation with the target’s name, location, and size. Confirmed items move to the Recycle Bin. Important standard folders and links are protected.

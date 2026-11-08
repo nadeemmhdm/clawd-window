@@ -14,6 +14,32 @@ html, body {
   cursor: default;
 }
 
+#pet-art {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  transform-origin: 50% 78%;
+  will-change: transform;
+}
+
+#pet-art.is-sleeping {
+  animation: clawd-sleep-breathe 4.5s ease-in-out infinite;
+}
+
+#pet-art.is-working {
+  animation: clawd-work-bounce 320ms ease-in-out infinite alternate;
+}
+
+@keyframes clawd-sleep-breathe {
+  0%, 100% { transform: translateY(0) scale(1, 1); }
+  45% { transform: translateY(-1px) scale(1.02, 1.035); }
+}
+
+@keyframes clawd-work-bounce {
+  from { transform: translateY(0) rotate(0deg); }
+  to { transform: translateY(-1.5px) rotate(0.5deg); }
+}
+
 #clawd, #clawd-img, #clawd-vid {
   position: absolute;
   inset: 0;

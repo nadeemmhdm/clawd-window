@@ -12,6 +12,7 @@ const EYE_TRACK_MAX = 6;
 const objSvg = document.getElementById("clawd");
 const objImg = document.getElementById("clawd-img");
 const objVid = document.getElementById("clawd-vid");
+const petArt = document.getElementById("pet-art");
 const overlay = document.getElementById("overlay");
 const petGreeting = document.getElementById("pet-greeting");
 
@@ -103,6 +104,15 @@ objSvg.addEventListener("load", () => {
   console.log("[Clawd] svg loaded, eyes el:", currentEyesEl ? currentEyesEl.tagName + "." + currentEyesEl.getAttribute("class") : "NOT FOUND");
 });
 
+objVid.addEventListener("canplay", () => {
+  if (!objVid.hidden && objVid.paused) {
+    objVid.play().catch((error) => console.warn("[Clawd] video replay failed:", objVid.currentSrc, error));
+  }
+});
+objVid.addEventListener("error", () => {
+  console.warn("[Clawd] video asset failed:", objVid.currentSrc, objVid.error && objVid.error.code);
+});
+
 function resolveAssetPath(state) {
   if (!currentManifest || !currentManifest.states) return null;
   return currentManifest.states[state] || currentManifest.states.idle_living || null;
@@ -182,11 +192,15 @@ function showImg(path) {
 }
 
 function showVid(path) {
-  if (objVid.getAttribute("src") !== path) objVid.src = path;
+  if (objVid.getAttribute("src") !== path) {
+    objVid.pause();
+    objVid.src = path;
+    objVid.load();
+  }
   objVid.hidden = false;
   objSvg.hidden = true;
   objImg.hidden = true;
-  objVid.play().catch(() => {});
+  objVid.play().catch((error) => console.warn("[Clawd] video playback failed:", path, error));
   currentEyesEl = null;
 }
 
@@ -197,6 +211,10 @@ function applyState(payload) {
   currentState = state;
   currentDirection = direction;
   currentEdge = edge;
+  if (petArt) {
+    petArt.classList.toggle("is-sleeping", state === "sleeping");
+    petArt.classList.toggle("is-working", typeof state === "string" && state.startsWith("working_"));
+  }
   applyDirectionEdge(direction, edge);
 
   // Cycler controls the asset while in idle_living. Snap to a fresh sticker

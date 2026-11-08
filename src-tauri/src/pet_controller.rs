@@ -49,6 +49,28 @@ fn work_area_for_point(_x: i32, _y: i32) -> Option<(i32, i32, i32, i32)> {
     None
 }
 
+fn walker_pauses_for_state(state: PetState) -> bool {
+    matches!(state, PetState::Eating | PetState::Sleeping) || working_states().contains(&state)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn walker_pauses_for_sleeping_and_every_work_pose() {
+        assert!(walker_pauses_for_state(PetState::Sleeping));
+        assert!(working_states()
+            .iter()
+            .copied()
+            .all(walker_pauses_for_state));
+        assert!(!walker_pauses_for_state(PetState::IdleLiving));
+        assert!(!walker_pauses_for_state(PetState::Walking {
+            dir: Direction::Left
+        }));
+    }
+}
+
 const WALK_TICK_MS: u64 = 16;
 const WALK_SPEED_PX_PER_TICK: i32 = 2;
 const CLIMB_SPEED_PX_PER_TICK: i32 = 2;
@@ -193,10 +215,7 @@ pub fn spawn_walker(app: AppHandle, state: SharedState, windows: SharedWindows, 
             }
 
             let cur = *state.read();
-            if matches!(
-                cur,
-                PetState::Eating | PetState::WorkingTyping | PetState::WorkingThinking
-            ) {
+            if walker_pauses_for_state(cur) {
                 initialized = false;
                 continue;
             }
